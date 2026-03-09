@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sentinel — Manufacturing Monitor</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:      #0f1117;
+      --surface: #161b24;
+      --border:  #222b38;
+      --text:    #d0dbe8;
+      --dim:     #4d6070;
+      --green:   #3ddc84;
+      --yellow:  #f5c542;
+      --orange:  #f57c42;
+      --red:     #e84545;
+      --blue:    #4a9eff;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ─────────────────────────────────────────── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 28px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .brand {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 3px;
+    }
+
+    .brand span {
+      color: var(--dim);
+      font-weight: 400;
+      font-size: 11px;
+      margin-left: 10px;
+      letter-spacing: 2px;
+    }
+
+    .header-meta {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: var(--dim);
+    }
+
+    .badge { display: flex; align-items: center; gap: 6px; }
+
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); }
+    .dot.live  { background: var(--green); }
+    .dot.error { background: var(--red); }
+
+    /* ── STATUS BAR ──────────────────────────────────────── */
+    #status-bar {
+      padding: 16px 28px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    #overall-label {
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--dim);
+    }
+
+    #overall-status {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: 2px;
+    }
+
+    .status-sep { width: 1px; height: 36px; background: var(--border); }
+
+    #fault-text { font-size: 13px; color: var(--dim); }
+    #fault-text strong { color: var(--text); font-weight: 600; display: block; margin-bottom: 2px; }
+
+    /* ── ALERTS PANEL ────────────────────────────────────── */
+    #alerts-bar {
+      display: none;
+      padding: 0 28px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    #alerts-bar.has-alerts { display: block; }
+
+    .alert-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+    }
+
+    .alert-row:last-child { border-bottom: none; }
+
+    .alert-level {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      padding: 2px 8px;
+      border-radius: 3px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .alert-level.critical { background: rgba(232,69,69,0.15); color: var(--red); }
+    .alert-level.warning  { background: rgba(245,124,66,0.15); color: var(--orange); }
+    .alert-level.notice   { background: rgba(245,197,66,0.15); color: var(--yellow); }
+
+    .alert-type {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: var(--text);
+      font-weight: 600;
+      width: 220px;
+      flex-shrink: 0;
+    }
+
+    .alert-msg { color: var(--dim); flex: 1; }
+
+    .alert-time {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      color: var(--dim);
+      flex-shrink: 0;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────── */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: var(--border);
+    }
+
+    .panel { background: var(--bg); padding: 24px 28px; }
+
+    .panel-title {
+      font-size: 10px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--dim);
+      margin-bottom: 20px;
+    }
+
+    /* ── CONDITION ROWS ──────────────────────────────────── */
+    .cond-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 9px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .cond-row:last-child { border-bottom: none; }
+
+    .cond-name {
+      width: 120px;
+      font-size: 11px;
+      color: var(--dim);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      flex-shrink: 0;
+    }
+
+    .cond-val {
+      width: 64px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      color: var(--text);
+      flex-shrink: 0;
+    }
+
+    .cond-offline {
+      width: 64px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: var(--red);
+      flex-shrink: 0;
+    }
+
+    .cond-bar-bg {
+      flex: 1;
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .cond-bar { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
+
+    .cond-badge {
+      width: 80px;
+      text-align: right;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      flex-shrink: 0;
+    }
+
+    /* ── SENSOR GROUPS ───────────────────────────────────── */
+    .group-label {
+      font-size: 9px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--dim);
+      padding: 14px 0 6px 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 2px;
+    }
+
+    /* ── READING CARDS ───────────────────────────────────── */
+    .cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .cards-2 { grid-template-columns: 1fr 1fr; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 14px 16px;
+    }
+
+    .card.offline { border-color: var(--red); opacity: 0.7; }
+
+    .card-label {
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--dim);
+      margin-bottom: 6px;
+    }
+
+    .card-value {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 22px;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .card-unit { font-size: 12px; color: var(--dim); }
+
+    .card-delta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      color: var(--dim);
+      margin-top: 5px;
+    }
+
+    .card-offline {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: var(--red);
+      margin-top: 4px;
+      letter-spacing: 1px;
+    }
+
+    .up   { color: var(--orange); }
+    .down { color: var(--green); }
+
+    /* ── CHART ───────────────────────────────────────────── */
+    .chart-panel { grid-column: 1 / -1; }
+    #trend-canvas { width: 100%; height: 130px; display: block; }
+
+    /* ── UR PANEL ────────────────────────────────────────── */
+    .ur-panel { grid-column: 1 / -1; }
+
+    .ur-joints { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+
+    .joint-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 14px;
+      text-align: center;
+    }
+
+    .joint-label { font-size: 10px; letter-spacing: 2px; color: var(--dim); text-transform: uppercase; margin-bottom: 8px; }
+    .joint-rating { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 1px; }
+
+    .ur-offline {
+      color: var(--dim);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      letter-spacing: 2px;
+      padding: 24px;
+      text-align: center;
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+    }
+
+    /* ── COLORS ──────────────────────────────────────────── */
+    .excellent { color: var(--green);  }
+    .good      { color: var(--green);  }
+    .fair      { color: var(--yellow); }
+    .poor      { color: var(--orange); }
+    .critical  { color: var(--red);    }
+    .unknown   { color: var(--dim);    }
+
+    .bar-excellent, .bar-good { background: var(--green);  width: 100%; }
+    .bar-fair                 { background: var(--yellow); width: 55%; }
+    .bar-poor                 { background: var(--orange); width: 30%; }
+    .bar-critical             { background: var(--red);    width: 10%; }
+    .bar-unknown              { background: var(--dim);    width: 0;   }
+
+    /* ── WAITING ─────────────────────────────────────────── */
+    .waiting { padding: 60px 28px; text-align: center; color: var(--dim); }
+    .waiting p { font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 2px; margin-top: 12px; }
+
+    .spinner {
+      width: 24px; height: 24px;
+      border: 2px solid var(--border);
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="brand">SENTINEL <span>MANUFACTURING MONITOR</span></div>
+  <div class="header-meta">
+    <div class="badge">
+      <div class="dot" id="arduino-dot"></div>
+      <span id="arduino-label">Arduino — connecting</span>
+    </div>
+    <div class="badge">
+      <div class="dot" id="ur-dot"></div>
+      <span id="ur-label">UR Robot — offline</span>
+    </div>
+    <span id="clock">--:--:--</span>
+  </div>
+</header>
+
+<div id="status-bar">
+  <div>
+    <div id="overall-label">Overall Condition</div>
+    <div id="overall-status" class="unknown">—</div>
+  </div>
+  <div class="status-sep"></div>
+  <div id="fault-text"><span style="color:var(--dim);font-size:13px">Waiting for data...</span></div>
+</div>
+
+<!-- Alerts panel — hidden until alerts arrive -->
+<div id="alerts-bar">
+  <div id="alerts-list"></div>
+</div>
+
+<div id="content">
+  <div class="waiting">
+    <div class="spinner"></div>
+    <p>Waiting for Arduino data — make sure bridge.py is running</p>
+  </div>
+</div>
+
+<script>
+  const API = 'http://localhost:5000/data';
+  let built = false;
+
+  function cls(c) { return (c || 'unknown').toLowerCase(); }
+
+  function statusColor(s) {
+    return { EXCELLENT:'var(--green)', GOOD:'var(--green)', FAIR:'var(--yellow)',
+             POOR:'var(--orange)', CRITICAL:'var(--red)' }[s] || 'var(--dim)';
+  }
+
+  function build() {
+    document.getElementById('content').innerHTML = `
+      <div class="grid">
+
+        <!-- LEFT: Condition Report -->
+        <div class="panel">
+          <div class="panel-title">Condition Report</div>
+          <div id="cond-rows"></div>
+        </div>
+
+        <!-- RIGHT: Live Readings -->
+        <div class="panel">
+          <div class="panel-title">Live Readings</div>
+
+          <div class="group-label">Temperature</div>
+          <div class="cards" id="cards-temp"></div>
+
+          <div class="group-label">Humidity</div>
+          <div class="cards" id="cards-humid"></div>
+
+          <div class="group-label">Vibration</div>
+          <div class="cards" id="cards-vib"></div>
+
+          <div class="group-label">Other</div>
+          <div class="cards cards-2" id="cards-other"></div>
+        </div>
+
+        <!-- CHART -->
+        <div class="panel chart-panel">
+          <div class="panel-title">Temperature Trend — Base Sensor</div>
+          <canvas id="trend-canvas"></canvas>
+        </div>
+
+        <!-- UR ROBOT -->
+        <div class="panel ur-panel">
+          <div class="panel-title">UR Robot — Joint Condition</div>
+          <div id="ur-content">
+            <div class="ur-offline">UR robot not connected — enable at hackathon</div>
+          </div>
+        </div>
+
+      </div>`;
+  }
+
+  // ── CONDITION ROWS ──────────────────────────────────────
+  function updateCondRows(conditions, health) {
+    const groups = [
+      { label: 'Temperature',
+        rows: [
+          { key: 'temp_base',  label: 'Temp — Base'  },
+          { key: 'temp_joint', label: 'Temp — Joint' },
+          { key: 'temp_tool',  label: 'Temp — Tool'  },
+        ]
+      },
+      { label: 'Humidity',
+        rows: [
+          { key: 'humid_base',  label: 'Humid — Base'  },
+          { key: 'humid_joint', label: 'Humid — Joint' },
+          { key: 'humid_tool',  label: 'Humid — Tool'  },
+        ]
+      },
+      { label: 'Vibration',
+        rows: [
+          { key: 'vib_base', label: 'Vib — Base' },
+          { key: 'vib_mid',  label: 'Vib — Mid'  },
+          { key: 'vib_tool', label: 'Vib — Tool' },
+        ]
+      },
+      { label: 'Other',
+        rows: [
+          { key: 'sound',    label: 'Sound'    },
+          { key: 'distance', label: 'Distance' },
+        ]
+      },
+    ];
+
+    const el = document.getElementById('cond-rows');
+    if (!el) return;
+
+    el.innerHTML = groups.map(g => {
+      const rowsHTML = g.rows.map(r => {
+        const offline = health && health[r.key] === 'offline';
+        const rating  = offline ? 'OFFLINE' : (conditions[r.key] || 'UNKNOWN');
+        const c       = offline ? 'critical' : cls(rating);
+        return `
+          <div class="cond-row">
+            <div class="cond-name">${r.label}</div>
+            ${offline
+              ? `<div class="cond-offline">OFFLINE</div>`
+              : `<div class="cond-val"></div>`
+            }
+            <div class="cond-bar-bg"><div class="cond-bar bar-${c}"></div></div>
+            <div class="cond-badge ${c}">${rating}</div>
+          </div>`;
+      }).join('');
+      return `<div class="group-label">${g.label}</div>${rowsHTML}`;
+    }).join('');
+  }
+
+  // ── LIVE READING CARDS ───────────────────────────────────
+  function makeCard(label, val, unit, delta, offline) {
+    if (offline) {
+      return `<div class="card offline">
+        <div class="card-label">${label}</div>
+        <div class="card-value">--<span class="card-unit">${unit}</span></div>
+        <div class="card-offline">OFFLINE</div>
+      </div>`;
+    }
+    const display = val != null ? `${val}<span class="card-unit">${unit}</span>` : `--<span class="card-unit">${unit}</span>`;
+    let deltaHTML = '';
+    if (delta != null) {
+      const n    = parseFloat(delta);
+      const sign = n > 0 ? '+' : '';
+      const c    = n > 0.5 ? 'up' : n < -0.5 ? 'down' : '';
+      deltaHTML  = `<div class="card-delta"><span class="${c}">${sign}${n.toFixed(1)} from base</span></div>`;
+    }
+    return `<div class="card">
+      <div class="card-label">${label}</div>
+      <div class="card-value">${display}</div>
+      ${deltaHTML}
+    </div>`;
+  }
+
+  function updateCards(a, health) {
+    const h = health || {};
+
+    const ct = document.getElementById('cards-temp');
+    if (ct) ct.innerHTML =
+      makeCard('Base',  a.temp_base,  '°C', a.delta_temp_base,  h.temp_base  === 'offline') +
+      makeCard('Joint', a.temp_joint, '°C', a.delta_temp_joint, h.temp_joint === 'offline') +
+      makeCard('Tool',  a.temp_tool,  '°C', a.delta_temp_tool,  h.temp_tool  === 'offline');
+
+    const ch = document.getElementById('cards-humid');
+    if (ch) ch.innerHTML =
+      makeCard('Base',  a.humid_base,  '%', a.delta_humid_base,  h.humid_base  === 'offline') +
+      makeCard('Joint', a.humid_joint, '%', a.delta_humid_joint, h.humid_joint === 'offline') +
+      makeCard('Tool',  a.humid_tool,  '%', a.delta_humid_tool,  h.humid_tool  === 'offline');
+
+    const cv = document.getElementById('cards-vib');
+    if (cv) cv.innerHTML =
+      makeCard('Base', a.vib_base, '', a.delta_vib_base, h.vib_base === 'offline') +
+      makeCard('Mid',  a.vib_mid,  '', a.delta_vib_mid,  h.vib_mid  === 'offline') +
+      makeCard('Tool', a.vib_tool, '', a.delta_vib_tool, h.vib_tool === 'offline');
+
+    const co = document.getElementById('cards-other');
+    if (co) co.innerHTML =
+      makeCard('Sound',    a.sound,    '',   a.delta_sound, h.sound    === 'offline') +
+      makeCard('Distance', a.distance, 'cm', a.delta_dist,  h.distance === 'offline');
+  }
+
+  // ── ALERTS ───────────────────────────────────────────────
+  function updateAlerts(alerts) {
+    const bar  = document.getElementById('alerts-bar');
+    const list = document.getElementById('alerts-list');
+    if (!bar || !list) return;
+
+    if (!alerts || alerts.length === 0) {
+      bar.classList.remove('has-alerts');
+      return;
+    }
+
+    bar.classList.add('has-alerts');
+    list.innerHTML = alerts.map(a => {
+      const lvl = (a.level || 'notice').toLowerCase();
+      return `<div class="alert-row">
+        <div class="alert-level ${lvl}">${a.level}</div>
+        <div class="alert-type">${a.type}</div>
+        <div class="alert-msg">${a.message}</div>
+        <div class="alert-time">${a.time}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── UR ROBOT ─────────────────────────────────────────────
+  function updateUR(ur, conditions) {
+    const el = document.getElementById('ur-content');
+    if (!el) return;
+    if (!ur || !ur.connected) {
+      el.innerHTML = `<div class="ur-offline">UR robot not connected — enable at hackathon</div>`;
+      return;
+    }
+    const joints = Object.entries(conditions).filter(([k]) => k.startsWith('joint_'));
+    if (!joints.length) { el.innerHTML = `<div class="ur-offline">No joint data</div>`; return; }
+    el.innerHTML = `<div class="ur-joints">` + joints.map(([k, v]) => {
+      const c = cls(v);
+      return `<div class="joint-card">
+        <div class="joint-label">${k.replace(/_/g,' ').toUpperCase()}</div>
+        <div class="joint-rating ${c}">${v}</div>
+      </div>`;
+    }).join('') + `</div>`;
+  }
+
+  // ── CHART ────────────────────────────────────────────────
+  function drawChart(history) {
+    const canvas = document.getElementById('trend-canvas');
+    if (!canvas || history.length < 2) return;
+    const ctx = canvas.getContext('2d');
+    const W = canvas.offsetWidth, H = 130;
+    canvas.width = W; canvas.height = H;
+    const temps = history.map(h => h.temp).filter(t => t != null);
+    if (temps.length < 2) return;
+    const mn = Math.min(...temps) - 1, mx = Math.max(...temps) + 1;
+    const pad = { l: 38, r: 16, t: 12, b: 22 };
+    const cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
+
+    ctx.clearRect(0, 0, W, H);
+    for (let i = 0; i <= 4; i++) {
+      const y = pad.t + (ch / 4) * i;
+      ctx.strokeStyle = 'rgba(34,43,56,1)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke();
+      ctx.fillStyle = '#4d6070';
+      ctx.font = '10px IBM Plex Mono, monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText((mx - ((mx - mn) / 4) * i).toFixed(1), pad.l - 6, y + 4);
+    }
+
+    ctx.beginPath();
+    history.forEach((h, i) => {
+      if (h.temp == null) return;
+      const x = pad.l + (i / (history.length - 1)) * cw;
+      const y = pad.t + ((mx - h.temp) / (mx - mn)) * ch;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = '#4a9eff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.fillStyle = '#4d6070';
+    ctx.font = '10px IBM Plex Mono, monospace';
+    ctx.textAlign = 'center';
+    const step = Math.max(1, Math.floor(history.length / 5));
+    for (let i = 0; i < history.length; i += step) {
+      const x = pad.l + (i / (history.length - 1)) * cw;
+      ctx.fillText(history[i].time, x, H - 4);
+    }
+  }
+
+  // ── MAIN UPDATE ──────────────────────────────────────────
+  function update(data) {
+    const a      = data.arduino       || {};
+    const c      = data.condition     || {};
+    const ur     = data.ur_robot      || {};
+    const st     = data.overall_status || 'UNKNOWN';
+    const fault  = data.fault;
+    const alerts = data.alerts        || [];
+    const health = data.sensor_health || {};
+
+    if (!built && a.temp_base != null) { built = true; build(); }
+    if (!built) return;
+
+    // Status bar
+    const statusEl = document.getElementById('overall-status');
+    statusEl.textContent = st;
+    statusEl.style.color = statusColor(st);
+
+    const faultEl = document.getElementById('fault-text');
+    if (fault) {
+      faultEl.innerHTML = `<strong>${fault.type}</strong>${fault.description} — <em>${fault.action}</em>`;
+      faultEl.style.color = statusColor(st);
+    } else {
+      faultEl.innerHTML = `<span style="color:var(--dim)">No active faults detected</span>`;
+    }
+
+    // Connection badges
+    const ad = document.getElementById('arduino-dot');
+    const al = document.getElementById('arduino-label');
+    if (a.temp_base != null) { ad.className = 'dot live'; al.textContent = 'Arduino — live'; }
+    else                     { ad.className = 'dot error'; al.textContent = 'Arduino — no data'; }
+
+    const ud = document.getElementById('ur-dot');
+    const ul = document.getElementById('ur-label');
+    if (ur.connected) { ud.className = 'dot live'; ul.textContent = 'UR Robot — live'; }
+    else              { ud.className = 'dot'; ul.textContent = 'UR Robot — offline'; }
+
+    document.getElementById('clock').textContent =
+      new Date().toLocaleTimeString('en-US', { hour12: false });
+
+    updateAlerts(alerts);
+    updateCondRows(c, health);
+    updateCards(a, health);
+    updateUR(ur, c);
+    drawChart(data.history || []);
+  }
+
+  async function poll() {
+    try {
+      const res = await fetch(API, { cache: 'no-store' });
+      update(await res.json());
+    } catch(e) {
+      const d = document.getElementById('arduino-dot');
+      if (d) d.className = 'dot error';
+    }
+  }
+
+  poll();
+  setInterval(poll, 1000);
+</script>
+</body>
+</html>
