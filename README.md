@@ -1,3 +1,5 @@
+Final software and Presentation for AutoHack 2.0
+
 # Sentinel — Predictive Maintenance Monitor
 
 A real-time predictive maintenance system built for a Honda / Universal Robots manufacturing environment. Developed at a hackathon focused on preventing downtime, predicting failures, and minimizing recovery time.
