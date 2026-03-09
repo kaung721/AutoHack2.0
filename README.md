@@ -29,6 +29,9 @@ The Arduino reads all sensors every 500ms and outputs JSON over serial. The Pyth
 | HC-SR04 Ultrasonic Sensor | 1 | Monitor part positioning and alignment |
 | Breadboard | 1 | Power distribution |
 
+![Sentinel Setup](https://raw.githubusercontent.com/kaung721/AutoHack2.0/main/images/sentinel_1.jpg)
+![Sentinel Wiring](https://raw.githubusercontent.com/kaung721/AutoHack2.0/main/images/sentinel_2.jpg)
+
 ---
 
 ## Wiring
@@ -197,6 +200,10 @@ This means an operator glancing at the screen can immediately see which part of 
 If the piezo sensor at the base detects rising vibration, the base joint of the 3D arm turns yellow and a `VIBRATION WARNING — BASE` label floats above it. If temperature also rises at the same location, the joint turns red and the label updates to `BASE MOTOR FAULT — CRITICAL`. If the middle joint sensor detects heat and vibration together, only the middle joint highlights while the rest of the arm stays green.
 
 Multiple joints can be in warning states simultaneously, each with their own independent label and color, giving a full picture of the machine's health across all monitored locations at once.
+
+![V6 3D Visualization](https://raw.githubusercontent.com/kaung721/AutoHack2.0/main/images/v6_1.jpg)
+![V6 Joint Warning](https://raw.githubusercontent.com/kaung721/AutoHack2.0/main/images/v6_2.jpg)
+![V6 Dashboard](https://raw.githubusercontent.com/kaung721/AutoHack2.0/main/images/v6_3.jpg)
 
 ### Tech Stack
 
