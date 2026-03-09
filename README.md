@@ -29,8 +29,8 @@ The Arduino reads all sensors every 500ms and outputs JSON over serial. The Pyth
 | HC-SR04 Ultrasonic Sensor | 1 | Monitor part positioning and alignment |
 | Breadboard | 1 | Power distribution |
 
-![Sentinel Setup](https://github.com/kaung721/AutoHack2.0/main/images/sentinel_1.jpg)
-![Sentinel Wiring](https://github.com/kaung721/AutoHack2.0/main/images/sentinel_2.jpg)
+![Sentinel Setup](https://github.com/kaung721/AutoHack2.0/blob/main/images/sentinel_1.jpeg)
+![Sentinel Wiring](https://github.com/kaung721/AutoHack2.0/blob/main/images/sentinel_2.jpeg)
 
 ---
 
@@ -201,9 +201,9 @@ If the piezo sensor at the base detects rising vibration, the base joint of the 
 
 Multiple joints can be in warning states simultaneously, each with their own independent label and color, giving a full picture of the machine's health across all monitored locations at once.
 
-![V6 3D Visualization](https://github.com/kaung721/AutoHack2.0/main/images/v6_1.jpg)
-![V6 Joint Warning](https://github.com/kaung721/AutoHack2.0/main/images/v6_2.jpg)
-![V6 Dashboard](https://github.com/kaung721/AutoHack2.0/main/images/v6_3.jpg)
+![V6 3D Visualization](https://github.com/kaung721/AutoHack2.0/blob/main/images/v6_1.jpeg)
+![V6 Joint Warning](https://github.com/kaung721/AutoHack2.0/blob/main/images/v6_2.jpeg)
+![V6 Dashboard](https://github.com/kaung721/AutoHack2.0/blob/main/images/v6_3.jpeg)
 
 ### Tech Stack
 
