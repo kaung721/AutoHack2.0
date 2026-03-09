@@ -1,4 +1,3 @@
-# AutoHack2.0
 # Sentinel — Predictive Maintenance Monitor
 
 A real-time predictive maintenance system built for a Honda / Universal Robots manufacturing environment. Developed at a hackathon focused on preventing downtime, predicting failures, and minimizing recovery time.
@@ -10,10 +9,12 @@ The system uses an Arduino Mega with multiple sensors to monitor a robotic works
 ## How It Works
 
 ```
-Arduino (sensors) → USB Serial → bridge.py → localhost:5000/data → dashboard.html
+Arduino (sensors) → USB Serial → bridge.py → :5000/data → dashboard.html
+                                                   ↓
+                                            V6 React App (3D visualization)
 ```
 
-The Arduino reads all sensors every 500ms and outputs JSON over serial. The Python bridge reads that JSON, runs condition analysis against a calibrated baseline, classifies any faults, and serves everything over HTTP. The dashboard polls every second and updates live.
+The Arduino reads all sensors every 500ms and outputs JSON over serial. The Python bridge reads that JSON, runs condition analysis against a calibrated baseline, classifies any faults, and serves everything over HTTP on port 5000. Two frontends consume this data — a standalone `dashboard.html` for quick monitoring, and the **V6 React application** which renders an interactive 3D visualization of the robotic arm with live sensor data overlaid.
 
 ---
 
@@ -176,9 +177,113 @@ netsh advfirewall firewall add rule name="Sentinel Monitor" dir=in action=allow 
 
 ---
 
+## V6 React Application — 3D Visualization
+
+The V6 app is the primary interface for the system. Rather than displaying raw numbers, it renders a fully interactive 3D model of the Universal Robots arm and maps live sensor data directly onto the physical locations of the machine. Operators can see exactly where a problem is developing — not just that something is wrong.
+
+### Joint-Level Warning System
+
+Every sensor in the system is physically mounted at a specific location on the robot — base, middle joint, or tool end. When a sensor reading deviates from its baseline, the corresponding part of the 3D model reacts in real time:
+
+- The affected joint **changes color** based on condition — green for healthy, yellow for fair, orange for poor, red for critical
+- A **floating warning label** appears directly on the joint in 3D space, showing the fault type and severity
+- As conditions worsen, the warning escalates from a subtle indicator to a prominent alert overlay on that specific joint
+- When conditions return to normal, the warning clears and the joint returns to its healthy color
+
+This means an operator glancing at the screen can immediately see which part of the arm has a problem and how serious it is — no need to read a table or interpret numbers.
+
+### Example Scenarios
+
+If the piezo sensor at the base detects rising vibration, the base joint of the 3D arm turns yellow and a `VIBRATION WARNING — BASE` label floats above it. If temperature also rises at the same location, the joint turns red and the label updates to `BASE MOTOR FAULT — CRITICAL`. If the middle joint sensor detects heat and vibration together, only the middle joint highlights while the rest of the arm stays green.
+
+Multiple joints can be in warning states simultaneously, each with their own independent label and color, giving a full picture of the machine's health across all monitored locations at once.
+
+### Tech Stack
+
+- React 19 + TypeScript
+- Vite (dev server + build)
+- Three.js via React Three Fiber + Drei — 3D rendering and scene management
+- TailwindCSS — UI and overlay styling
+
+### Setup
+
+```bash
+cd V6
+npm install
+npm run dev
+```
+
+The Vite dev server proxies all `/api/buddy` requests to `http://10.250.15.115:5000` to avoid CORS issues. To point it at a different machine, update the proxy target in `vite.config.ts`:
+
+```ts
+proxy: {
+  '/api/buddy': {
+    target: 'http://YOUR_LAPTOP_IP:5000',
+    changeOrigin: true,
+    rewrite: (path) => path.replace(/^\/api\/buddy/, '')
+  }
+}
+```
+
+**Scripts:**
+```bash
+npm run dev      # start dev server with HMR
+npm run build    # production build
+npm run preview  # preview production build
+npm run lint     # run ESLint
+```
+
+---
+
+## API Response Format
+
+`bridge.py` serves the following JSON structure at `GET /data`:
+
+```json
+{
+  "timestamp": "2025-03-08T14:32:01.123",
+  "arduino": {
+    "temp_base": 22.1,  "temp_joint": 23.4,  "temp_tool": 21.8,
+    "humid_base": 45.0, "humid_joint": 44.0, "humid_tool": 46.0,
+    "vib_base": 12,     "vib_mid": 8,        "vib_tool": 10,
+    "sound": 46,        "distance": 15.2,
+    "delta_temp_base": 0.3,  "delta_vib_base": 2, ...
+  },
+  "condition": {
+    "temp_base": "EXCELLENT", "vib_mid": "FAIR", ...
+  },
+  "overall_status": "GOOD",
+  "overall_score": 87.5,
+  "fault": {
+    "type": "EARLY VIBRATION WARNING",
+    "confidence": "LOW",
+    "description": "Vibration slightly above baseline",
+    "action": "Monitor — could indicate early wear"
+  },
+  "alerts": [
+    {
+      "time": "14:32:01",
+      "level": "NOTICE",
+      "sensor": "vib_mid",
+      "type": "VIBRATION — MIDDLE ARM",
+      "message": "Vibration rising at MIDDLE ARM (delta: 14) — monitor closely"
+    }
+  ],
+  "sensor_health": {
+    "temp_base": "online", "vib_tool": "online", "distance": "offline", ...
+  },
+  "history": [
+    { "time": "14:31:55", "temp": 22.0, "score": 88.1 }, ...
+  ]
+}
+```
+
+---
+
 ## Built With
 
-- Arduino / C++
+- Arduino / C++ — sensor reading and baseline calibration
 - Python 3 — pyserial, http.server
-- HTML / CSS / JavaScript (vanilla, no frameworks)
-- ur-rtde (optional, for Universal Robots connection)
+- React 19 + TypeScript + Three.js — 3D robotic arm visualization (V6 app)
+- HTML / CSS / JavaScript — standalone dashboard
+- ur-rtde (optional) — Universal Robots RTDE interface
