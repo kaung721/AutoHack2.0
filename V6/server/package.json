@@ -1,0 +1,16 @@
+{
+  "name": "sensor-relay-server",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "WebSocket relay server — receives sensor data via HTTP, broadcasts to frontend",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "ws": "^8.18.0"
+  }
+}

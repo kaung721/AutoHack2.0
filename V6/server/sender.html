@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sensor Sender — Arduino → Server</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+    }
+    h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
+    .subtitle { color: #64748b; font-size: 0.85rem; margin-bottom: 2rem; }
+
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 600px;
+      margin-bottom: 1rem;
+    }
+    .card h2 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #94a3b8;
+      margin-bottom: 1rem;
+    }
+
+    .controls { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+    button {
+      padding: 0.6rem 1.2rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary { background: #3b82f6; color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #2563eb; }
+    .btn-danger { background: #ef4444; color: #fff; }
+    .btn-danger:hover:not(:disabled) { background: #dc2626; }
+    .btn-secondary { background: #334155; color: #e2e8f0; }
+    .btn-secondary:hover:not(:disabled) { background: #475569; }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #475569;
+    }
+    .dot.connected { background: #22c55e; animation: pulse 2s infinite; }
+    .dot.sending   { background: #3b82f6; animation: pulse 1s infinite; }
+    .dot.error     { background: #ef4444; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .config-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+    .config-row label {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      min-width: 100px;
+    }
+    .config-row input, .config-row select {
+      flex: 1;
+      padding: 0.4rem 0.75rem;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      color: #e2e8f0;
+      font-size: 0.85rem;
+      font-family: 'Cascadia Code', monospace;
+    }
+    .config-row input:focus, .config-row select:focus { outline: none; border-color: #3b82f6; }
+
+    .gauges {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+    .gauge {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 0.75rem;
+    }
+    .gauge .label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+      margin-bottom: 0.25rem;
+    }
+    .gauge .value {
+      font-size: 1.4rem;
+      font-weight: 700;
+      font-family: 'Cascadia Code', monospace;
+    }
+    .gauge .unit { font-size: 0.7rem; color: #64748b; font-weight: 400; }
+    .gauge .mapped {
+      font-size: 0.6rem;
+      color: #475569;
+      margin-top: 0.25rem;
+    }
+
+    .log {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 0.75rem;
+      font-family: 'Cascadia Code', monospace;
+      font-size: 0.7rem;
+      color: #94a3b8;
+      height: 160px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .log .error { color: #f87171; }
+    .log .success { color: #4ade80; }
+    .log .info { color: #60a5fa; }
+
+    .joint-row {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: 0.75rem;
+    }
+    .joint-badge {
+      font-size: 0.65rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      background: #334155;
+      color: #94a3b8;
+    }
+    .joint-badge.real {
+      background: #3b82f6;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .note {
+      font-size: 0.75rem;
+      color: #64748b;
+      text-align: center;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔌 Sensor Data Sender</h1>
+  <p class="subtitle">Connect to Arduino via USB — data goes to the relay server</p>
+
+  <!-- Server Config -->
+  <div class="card">
+    <h2>Configuration</h2>
+    <div class="config-row">
+      <label>Server URL</label>
+      <input id="serverUrl" type="text" value="/api/sensor-data" />
+    </div>
+    <div class="config-row">
+      <label>Baud Rate</label>
+      <input id="baudRate" type="number" value="115200" />
+    </div>
+    <div class="joint-row">
+      <span class="joint-badge real">J1 — REAL DATA</span>
+      <span class="joint-badge">J2 — simulated</span>
+      <span class="joint-badge">J3 — simulated</span>
+      <span class="joint-badge">J4 — simulated</span>
+      <span class="joint-badge">J5 — simulated</span>
+      <span class="joint-badge">J6 — simulated</span>
+    </div>
+  </div>
+
+  <!-- Connection -->
+  <div class="card">
+    <h2>Arduino Connection</h2>
+    <div class="status-row">
+      <span class="dot" id="statusDot"></span>
+      <span id="statusText" style="font-size:0.85rem;">Disconnected</span>
+      <span style="margin-left:auto;font-size:0.7rem;color:#64748b;" id="sendCount">0 sent</span>
+    </div>
+    <div class="controls">
+      <button class="btn-primary" id="btnConnect">Connect Arduino</button>
+      <button class="btn-danger" id="btnDisconnect" disabled>Disconnect</button>
+      <button class="btn-secondary" id="btnTestSend">Send Test Data</button>
+    </div>
+  </div>
+
+  <!-- Live Data -->
+  <div class="card">
+    <h2>Live Readings — J1 (Real Sensor)</h2>
+    <div class="gauges">
+      <div class="gauge">
+        <div class="label">Temperature</div>
+        <div class="value" id="gTemp">—<span class="unit"> °C</span></div>
+        <div class="mapped">Arduino: temp</div>
+      </div>
+      <div class="gauge">
+        <div class="label">Vibration</div>
+        <div class="value" id="gVib">—<span class="unit"> g</span></div>
+        <div class="mapped">Arduino: sound / 1000</div>
+      </div>
+      <div class="gauge">
+        <div class="label">Load</div>
+        <div class="value" id="gLoad">—<span class="unit"> %</span></div>
+        <div class="mapped">Arduino: humidity</div>
+      </div>
+      <div class="gauge">
+        <div class="label">Speed</div>
+        <div class="value" id="gSpeed">—<span class="unit"> °/s</span></div>
+        <div class="mapped">Arduino: distance × 5</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Log -->
+  <div class="card">
+    <h2>Log</h2>
+    <div class="log" id="log"></div>
+  </div>
+
+  <p class="note">
+    Requires Chrome or Edge. Arduino must output JSON lines over USB serial.
+  </p>
+
+<script>
+const statusDot   = document.getElementById('statusDot');
+const statusText  = document.getElementById('statusText');
+const sendCountEl = document.getElementById('sendCount');
+const btnConnect    = document.getElementById('btnConnect');
+const btnDisconnect = document.getElementById('btnDisconnect');
+const btnTestSend   = document.getElementById('btnTestSend');
+const logEl         = document.getElementById('log');
+const gTemp  = document.getElementById('gTemp');
+const gVib   = document.getElementById('gVib');
+const gLoad  = document.getElementById('gLoad');
+const gSpeed = document.getElementById('gSpeed');
+
+const JOINTS = [
+  'j1-waist', 'j2-shoulder', 'j3-elbow',
+  'j4-wrist-roll', 'j5-wrist-pitch', 'j6-wrist-yaw'
+];
+const REAL_JOINT = 'j1-waist';
+
+let port = null;
+let reader = null;
+let running = false;
+let sentCount = 0;
+
+function log(msg, cls = '') {
+  const time = new Date().toLocaleTimeString();
+  const line = document.createElement('div');
+  if (cls) line.className = cls;
+  line.textContent = `[${time}] ${msg}`;
+  logEl.appendChild(line);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function setStatus(state, text) {
+  statusDot.className = 'dot ' + state;
+  statusText.textContent = text;
+}
+
+function mapArduinoToJoint(data) {
+  return {
+    jointId:     REAL_JOINT,
+    temperature: Math.round((data.temp ?? 0) * 10) / 10,
+    vibration:   Math.round((data.sound ?? 0) / 1000 * 1000) / 1000,
+    load:        Math.round((data.humidity ?? 0) * 10) / 10,
+    speed:       Math.round((data.distance ?? 0) * 5 * 10) / 10,
+  };
+}
+
+function simulateReading(jointId) {
+  return {
+    jointId,
+    temperature: Math.round((30 + Math.random() * 25) * 10) / 10,
+    vibration:   Math.round((0.02 + Math.random() * 0.23) * 1000) / 1000,
+    load:        Math.round((20 + Math.random() * 50) * 10) / 10,
+    speed:       Math.round((40 + Math.random() * 100) * 10) / 10,
+  };
+}
+
+function updateGauges(r) {
+  gTemp.innerHTML  = `${r.temperature}<span class="unit"> °C</span>`;
+  gVib.innerHTML   = `${r.vibration}<span class="unit"> g</span>`;
+  gLoad.innerHTML  = `${r.load}<span class="unit"> %</span>`;
+  gSpeed.innerHTML = `${r.speed}<span class="unit"> °/s</span>`;
+}
+
+async function sendReadings(readings) {
+  const url = document.getElementById('serverUrl').value;
+  try {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(readings),
+    });
+    const json = await resp.json();
+    sentCount++;
+    sendCountEl.textContent = `${sentCount} sent`;
+    setStatus('sending', 'Streaming data…');
+    const real = readings.find(r => r.jointId === REAL_JOINT);
+    log(`Sent 6 joints | J1 temp:${real.temperature}°C vib:${real.vibration}g`, 'success');
+  } catch (err) {
+    log(`Send failed: ${err.message}`, 'error');
+  }
+}
+
+// ── Test send (no Arduino needed) ──
+btnTestSend.addEventListener('click', async () => {
+  const readings = JOINTS.map(id => simulateReading(id));
+  updateGauges(readings[0]);
+  await sendReadings(readings);
+});
+
+// ── Connect to Arduino via Web Serial ──
+btnConnect.addEventListener('click', async () => {
+  if (!('serial' in navigator)) {
+    log('Web Serial API not supported — use Chrome or Edge', 'error');
+    return;
+  }
+  try {
+    port = await navigator.serial.requestPort();
+    const baudRate = parseInt(document.getElementById('baudRate').value) || 115200;
+    await port.open({ baudRate });
+    running = true;
+    btnConnect.disabled = true;
+    btnDisconnect.disabled = false;
+    setStatus('connected', 'Connected — waiting for data…');
+    log('Arduino connected', 'info');
+
+    const decoder = new TextDecoderStream();
+    port.readable.pipeTo(decoder.writable);
+    reader = decoder.readable.getReader();
+
+    let buffer = '';
+    while (running) {
+      try {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += value;
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          try {
+            const data = JSON.parse(trimmed);
+            if (data.status !== 'data') {
+              log(`Arduino: ${data.msg || trimmed}`, 'info');
+              continue;
+            }
+            const realReading = mapArduinoToJoint(data);
+            const readings = JOINTS.map(id =>
+              id === REAL_JOINT ? realReading : simulateReading(id)
+            );
+            updateGauges(realReading);
+            await sendReadings(readings);
+          } catch (e) { /* skip malformed */ }
+        }
+      } catch (readErr) {
+        if (running) log(`Read error: ${readErr.message}`, 'error');
+        break;
+      }
+    }
+  } catch (err) {
+    log(`Connection failed: ${err.message}`, 'error');
+    setStatus('error', 'Connection failed');
+  }
+});
+
+// ── Disconnect ──
+btnDisconnect.addEventListener('click', async () => {
+  running = false;
+  try {
+    if (reader) { await reader.cancel(); reader = null; }
+    if (port)   { await port.close(); port = null; }
+  } catch (e) {}
+  btnConnect.disabled = false;
+  btnDisconnect.disabled = true;
+  setStatus('', 'Disconnected');
+  log('Disconnected', 'info');
+});
+</script>
+</body>
+</html>
